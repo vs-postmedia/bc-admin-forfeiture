@@ -1,5 +1,6 @@
 .env
 .DS_Store
+bc-gazette-scraper/data
 data/html-pages/*
 
 
