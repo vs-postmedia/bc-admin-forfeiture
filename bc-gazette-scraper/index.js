@@ -14,14 +14,14 @@ const gazette_cf = require('./data/gazette-cf.json');
 
 // VARS
 const useCheerio = true;
-const filename = 'data'; // temp file for data
+const filename = 'data.csv'; // temp file for data
 const testfile = 'test-data.csv'; // temp file for data
 const data_dir = 'data';
 
 // KICK IT OFF!!!
 // urls = gazette_annual.urls;
 // urls = gazette_weekly.urls.filter(d => d.title === 'Ministry of Public Safety and Solicitor General');
-urls = gazette_cf.urls.slice(-2); //.slice(0,1);
+urls = gazette_cf.urls; //.slice(-2); //.slice(0,1);
 downloadHTML(urls);
 
 
@@ -65,7 +65,7 @@ async function downloadHTML(urls) {
 			console.log(err);
 		}
 	} else {
-		console.log(`Skipping download for ${url} since ${cleanUrl} already exists.`);
+		// console.log(`Skipping download for ${url} since ${cleanUrl} already exists.`);
 	}
 	
 	// load local copy of html
@@ -79,9 +79,9 @@ async function downloadHTML(urls) {
 		console.log('Downloading next url...');
 		downloadHTML(urls);
 	} else {
-		// saveData(results, filename);
+		saveData(results, filename);
 	}
-	saveData(results, testfile);
+	// saveData(results, testfile);
 }
 
 function saveData(data, filename) {
@@ -89,6 +89,7 @@ function saveData(data, filename) {
 
 	try {
 		// const parser = new Parser(); // sanity check that we have the right number of seizures
+		fs.writeFileSync(`${__dirname}/${data_dir}/data.json`, JSON.stringify(data));
 		// expand the seizures out so there is one row per item seized
 		const parser = new Parser({transforms: [unwind({ paths: ['seized'] })]});
 		fs.writeFileSync(`${__dirname}/${data_dir}/${filename}`, parser.parse(data));
