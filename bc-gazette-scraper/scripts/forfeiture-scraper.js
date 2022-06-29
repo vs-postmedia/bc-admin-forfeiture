@@ -22,7 +22,6 @@ async function forfeitureScraper(html) {
 	console.log(gazette_date)
 
 	// page layout changes on certain dates
-	
 	if (gazette_ts <= v1_1_cutoff_ts && gazette_ts > v1_1_cutoff_ts_end) {
 		scraper_version = 1_1;
 	} else if (gazette_ts <= v1_cutoff_ts) {
@@ -49,27 +48,24 @@ async function forfeitureScraper(html) {
 function gazetteScraperV1_1($, gazette_date, scraper_version) {
 	// get all the copy & put it in an array
 	// several seizure notices aren't contained in any kind of <tag> at all. sigh.
-	const body_text = $('body').text();
-	let body_text_array = body_text.split('\n');
+	const body_text_array = $('body').text().split('\n');
 
 	// lets get parsing some text!!!
 	body_text_array.forEach(d => {
 		let offense, seized_goods;
+		
 		// skip rows that aren't seizure notices
 		if (d.includes('NOTICE IS HEREBY GIVEN THAT:') && d.length > 135) {
 			// parse out the chunk of text we actually need
 			const text = d.split('/civilforfeiture. ')[1] || d.split('THAT: ')[1];
 
 			// police department
-			let agency = text.split('Peace Officer(s) of the')[1];
-			if (agency) {
-				agency.split('seized')[0].trim();
-			}
+			let agency = text.split('Peace Officer(s) of the')[1].split('seized')[0].trim();
 
 			// CFO file number
 			let cfo_file = text.split('CFO file Number: ')[1];
 			if (cfo_file) {
-				cfo_file = cfo_file.split(',')[0].trim();
+				cfo_file = cfo_file.split(',')[0].replace('.', '').trim();
 			}
 			let police_file = 'NA';
 
@@ -112,14 +108,17 @@ function gazetteScraperV1_1($, gazette_date, scraper_version) {
 						.split(', ');
 
 					// filter out unneeded elements
-					seized_goods = split.filter(d => !d.includes('VIN') && !d.includes('on or about') && !d.includes('BCLP'));
+					seized_goods = split.filter(d => !d.includes('VIN') && !d.includes('on or about') && !d.includes('BCLP') && !d.includes('subject') && !d.includes('CFO'));
 				}
 
-				// this doesn't work for some reason...
-				seized_goods.forEach(d => {
-					d.replace('and ', '')
+				// tidy up...
+				seized_goods = seized_goods.map(d => {
+					return d.replace('/^and/', '')
 						.replace('an ', '')
+						.replace('a: ', '')
 						.replace('a ', '')
+						.replace(': ', '')
+						.replace('$', '')
 						.trim()
 				});
 
@@ -162,27 +161,21 @@ function gazetteScraperV1($, gazette_date, scraper_version) {
 			if (agency) {
 				agency = agency.split('seized')[0].trim();
 			}
-			console.log
+
 			// CFO file number
 			let police_file = 'NA';
 			if (text.includes('CFO File') || text.includes('CFO file')) {
-				cfo_file = text.split('Number:')[1].replace(', is subject to forfeiture under', '').replace('.', '');
-			} else (
-				console.log(text)
-			)
+				cfo_file = text.split('Number:')[1].replace(', is subject to forfeiture under', '').replace('.', '').trim();
+			}
 			
 			// Criminal code
 			if (text.includes('section')) {
 				offence = text.split('section')[1].split(' of the')[0];
 			} else if (text.includes('under ss.')) {
 				offence = text.split('under ss.')[1].split('Notice')[0];
-			} else {
-				console.log(text)
+			// } else {
+			// 	console.log(text)
 			}
-			
-			// if (offence) {
-			// 	offence.split(' of the')[0].trim();
-			// }
 
 			// sometimes there are multiple dates
 			const text_array = text.split('. On ');
@@ -193,8 +186,10 @@ function gazetteScraperV1($, gazette_date, scraper_version) {
 				if (t.includes('2016-4002')) { return; }
 
 				// date
-				date = t.split(', at')[0].replace('On ', '');
-				year = date.split(',')[1].trim();
+				year = t.split(',')[1].trim();
+				date = `${t.split(',')[0].replace('On ', '')}, ${year}`;
+				// date = t.split(', at')[0].replace('On ', '');
+				// year = date.split(',')[1].trim();
 
 				// location
 				let address = t.split(', ')[2].replace('at ', '').replace('the ', '').trim();
@@ -202,24 +197,29 @@ function gazetteScraperV1($, gazette_date, scraper_version) {
 				let location = `${address}, ${city}, British Columbia`;
 
 				// goods seized
-				let split = t.split('described as')[1];
+				let split = t.split('described as')[1];				
 				if (split) {
-					split.split(' The subject property')[0];
+					split = split.split('The subject property')[0];
 				}
 
 				if (split !== undefined) {
 					// remove commas from $$
 					split = split.replace(/(\d+),(\d+)/g, '$1$2')
+						// sometimes they use semi-colons...
+						.replace(/;/g, ',')
 						.split(', ');
 
 					// filter out unneeded elements
-					seized_goods = split.filter(d => !d.includes('VIN') && !d.includes('on or about') && !d.includes('BCLP') && !d.includes('CFO') && !d.includes('subject'));
+					seized_goods = split.filter(d => !d.includes('VIN') && !d.includes('on or about') && !d.includes('BCLP') && !d.includes('CFO') && !d.includes('subject') && !d.includes('ABLP'));
 				
-					// this doesn't work for some reason...
-					seized_goods.forEach(d => {
-						d.replace('and ', '')
+					// tidy up...
+					seized_goods = seized_goods.map(d => {
+						return d.replace('/^and/', '')
 							.replace('an ', '')
+							.replace('a: ', '')
 							.replace('a ', '')
+							.replace(': ', '')
+							.replace('$', '')
 							.trim()
 					});
 				}
@@ -362,6 +362,46 @@ function gazetteScraperV1($, gazette_date, scraper_version) {
 				version: 'manual'
 			}
 		);
+	} else if (gazette_date === 'December 8, 2016') {
+		cfo_data.push(
+			{ 
+				agency: 'Vancouver Police Department',
+				city: 'Vancouver', 
+				cfo_file: '2016-4052',
+				gazette_date: 'December 8, 2016',
+				seizure_date: 'January 27, 2011', 
+				location: '200 block of Abbott Street, Vancouver, British Columbia',
+				offence: '354(1) (Possession of property obtained by crime)',
+				police_file: 'NA',
+				seized_goods: ['1343 CAD', '405 CAD'],
+				year: 2011,
+				version: 'manual'
+			},{ 
+				agency: 'Vancouver Police Department',
+				city: 'Vancouver', 
+				cfo_file: '2016-4052',
+				gazette_date: 'December 8, 2016',
+				seizure_date: 'June 23, 2016', 
+				location: '400 block of Alexander Street, Vancouver, British Columbia',
+				offence: '354(1) (Possession of property obtained by crime)',
+				police_file: 'NA',
+				seized_goods: ['1700 CAD'],
+				year: 2016,
+				version: 'manual'
+			},{ 
+				agency: 'Vancouver Police Department',
+				city: 'Vancouver', 
+				cfo_file: '2016-4052',
+				gazette_date: 'December 8, 2016',
+				seizure_date: 'July 6, 2016', 
+				location: 'Main Street & Terminal Avenue, Vancouver, British Columbia',
+				offence: '354(1) (Possession of property obtained by crime)',
+				police_file: 'NA',
+				seized_goods: ['815 CAD'],
+				year: 2016,
+				version: 'manual'
+			}
+		);
 	}
 }
 
@@ -375,19 +415,26 @@ function gazetteScraperV2($, gazette_date, scraper_version) {
 		// locations & police department
 		if (text.includes('Peace Officer(s)')) {
 			// address
-			address = text.split(', Peace')[0]
-			// address = text.split(' B.C.')[0]
-				.replace('At ', '')
+			address = text.split(', Peace')[0];
+			// city
+			city = address.split(', ')[1];
+			
+			if (text.startsWith('On')) {
+				address = text.split(',')[2];
+				city = text.split(',')[3].trim();
+			}
+
+			address = address.replace('At ', '')
+				.replace('At the', '')
+				.replace('at the', '')
 				.replace('Near ', '')
 				.replace(', B.C.', '')
 				.replace(', BC', '')
 				.replace('or near ', '')
 				.replace('the ', '')
 				.trim();
-
-			// city
-			city = address.split(', ')[1];
-			location = `${address}, British Columbia`;
+			
+			location = `${address}, ${city}, British Columbia`;
 			// police department
 			agency = text.split('Peace Officer(s) of the ')[1];
 
@@ -409,18 +456,43 @@ function gazetteScraperV2($, gazette_date, scraper_version) {
 			// remove commas from $$
 			let text_no_comma = text.replace(/(\d+),(\d+)/g, '$1$2');
 			seized_goods.push(text_no_comma.split(' on ')[0].replace('-', '').trim())
+		// sometimes seized items are included in the text block
+		} else if (text.includes('Hours')) {
+			year = text.split(',')[1];
+			date = text.split(',')[0].replace('On ', '');
+			date = `${date}, ${year}`;
+
+			let goods = text
+				.split(': ')[1]
+				.split('on or')[0]
+				.replace(/(\d+),(\d+)/g, '$1$2');
+			seized_goods.push(goods);
 		}
 
 		// CFO & police file numbers
-		if (text.startsWith('CFO')) {
-			cfo_file = text.split(' ')[3].replace(';', '').trim();
-			police_file = text.split(' ')[4].replace('.', '').trim();
+		if (text.includes('CFO file')) {
+			cfo_file = text.split('Number')[1]
+				.replace(': ', '')
+				.replace(';', '')
+				.split(' ')[0];
+			police_file = text.split('Number')[1].split(' ')[2].replace('.', '').trim();
 		}
 
 		// Criminal code
 		if (text.includes('under section')) {
 			offence = text.split('under section')[1].trim()
 		}
+
+		// tidy up...
+		seized_goods = seized_goods.map(d => {
+			return d.replace('/^and/', '')
+				.replace('an ', '')
+				.replace('a: ', '')
+				.replace('a ', '')
+				.replace(': ', '')
+				.replace('$', '')
+				.trim()
+		});
 
 		// end forfeiture claim
 		if (text.startsWith('AND:')) {
@@ -430,7 +502,7 @@ function gazetteScraperV2($, gazette_date, scraper_version) {
 				city: city, 
 				cfo_file: cfo_file,
 				gazette_date: gazette_date,
-				seizure_date: date, 
+				seizure_date: date,
 				location: location,
 				offence: offence,
 				police_file: police_file,
@@ -448,6 +520,7 @@ function gazetteScraperV2($, gazette_date, scraper_version) {
 		agency: agency,
 		city: city, 
 		cfo_file: cfo_file, 
+		gazette_date: gazette_date,
 		seizure_date: date, 
 		location: location,
 		offence: offence,

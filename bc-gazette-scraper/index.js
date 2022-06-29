@@ -60,7 +60,7 @@ async function downloadHTML(urls) {
 		try {
 			await fs.promises.writeFile(htmlFilename, html.data);
 
-			console.log('done!')
+			console.log('Saved!')
 		} catch(err) { 
 			console.log(err);
 		}
@@ -76,22 +76,21 @@ async function downloadHTML(urls) {
 
 	// if there's more links, let's do it again!
 	if(urls.length > 0) {
-		console.log('Downloading next url...');
+		// console.log('Downloading next url...');
 		downloadHTML(urls);
 	} else {
 		saveData(results, filename);
 	}
-	// saveData(results, testfile);
 }
 
 function saveData(data, filename) {
 	console.log(`Saving data to ${filename}`);
 
 	try {
-		// const parser = new Parser(); // sanity check that we have the right number of seizures
+		// save a json for troubleshooting
 		fs.writeFileSync(`${__dirname}/${data_dir}/data.json`, JSON.stringify(data));
 		// expand the seizures out so there is one row per item seized
-		const parser = new Parser({transforms: [unwind({ paths: ['seized'] })]});
+		const parser = new Parser({transforms: [unwind({ paths: ['seized_goods'] })]});
 		fs.writeFileSync(`${__dirname}/${data_dir}/${filename}`, parser.parse(data));
 	} catch (err) {
 		console.error(err);
