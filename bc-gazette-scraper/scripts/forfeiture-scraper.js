@@ -532,26 +532,4 @@ function gazetteScraperV2($, gazette_date, scraper_version) {
 }
 
 
-// // get pages for list of all, annual, weekly and ministry lists of gazettes
-// async function gazette_lists(html) {
-// 	let data = {urls:[]};
-// 	const $ = cheerio.load(html);
-
-// 	// do some scraping
-// 	console.log('Oh, I do say, cheerio, good sir!');
-
-// 	const list = $('.main-content ul.search-results > li > a');
-	
-// 	// console.log(list.text())
-
-// 	$(list).each((i,d) => {
-// 		data.urls.push({
-// 			title: $(d).text(),
-// 			url: url_frag + $(d).attr('href')
-// 		});
-// 	});
-
-// 	return data;
-// }
-
 module.exports = forfeitureScraper;

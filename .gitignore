@@ -1,7 +1,7 @@
 .env
 .DS_Store
-bc-gazette-scraper/data
-data/html-pages/*
+./bc-gazette-scraper/data
+./data/data.json
 
 
 
